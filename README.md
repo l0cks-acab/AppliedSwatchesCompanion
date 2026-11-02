@@ -1,60 +1,129 @@
 # AppliedSwatches Companion
 
-An addon for [AppliedSwatches](https://github.com/l0cks-acab/appliedswatches) (and so Applied Energistics 2) on NeoForge 1.21.1.
+![AppliedSwatches Companion](docs/banner.png)
 
-Point the **Swatch Lens** at a build and it tells you how it reads: contrast, visual weight, palette and pattern. It also suggests accent blocks from your ME network that would make the build pop.
+An addon for [AppliedSwatches](https://github.com/l0cks-acab/appliedswatches) (Applied Energistics 2) on NeoForge 1.21.1.
 
-![Lens screen](docs/lens-screen.png)
+Point the **Swatch Lens** at a build and it shows how the build reads: its contrast, where its visual weight sits, how its palette is split and whether anything breaks the pattern. It then suggests accent blocks that fit, straight from your ME network.
 
-Harmony accents on four builds (top-heavy black/white/red, flat stone, busy stripes, wooden house):
-
-![Harmony examples](docs/harmony-examples.png)
+![Swatch Lens results](docs/lens-screen.png)
 
 ## Swatch Lens
 
 | Action | What it does |
 | --- | --- |
 | Sneak + use on a Swatch or Theme Terminal | Links the lens to that terminal's ME network |
-| Sneak + use on a block | Sets corner A |
-| Use on a block | Sets corner B |
-| Use in the air | Scans the region (each side up to 64 blocks) |
+| Sneak + use on a block | Sets corner A (cyan) |
+| Use on a block | Sets corner B (pink) |
+| Use in the air | Scans the region and opens the results |
 | Sneak + use in the air | Clears the corners and the heatmap |
 
-While you hold the lens, the region shows as a purple box (red if it's too big).
+While you hold the lens, the region shows as a purple box. Each side can be up to 64 blocks long, and the box turns red if it's too big.
 
-Recipe: fluix crystal on top, glass on each side of a spyglass, amethyst shard below.
+![Region outline](docs/region.png)
 
-## Scores
+The results screen gives five scores from 0 to 100, each with a short verdict:
 
-Only faces you can actually see count, meaning faces exposed to air or to see-through blocks. Every face's colour comes from its texture, using the same CIELAB approach as AppliedSwatches, but worked out per face.
-
-- **Contrast**: the spread of lightness (L*) across the surface. Too little reads flat, too much reads noisy.
-- **Balance**: where the visual weight sits. Dark, saturated and busy (high-detail) faces count as heavy. Weight should sit near the middle sideways and a little low, because top-heavy builds feel off.
-- **Palette**: face colours grouped by colour distance and compared to the 60-30-10 rule. The palette bar shows each group's share, with ticks at 60% and 90%.
-- **Similarity**: one-off blocks with no matching neighbour break the pattern (Gestalt similarity). They're outlined in yellow on the heatmap.
+- **Contrast**: whether lightness varies enough to show shape, without jumping between extremes.
+- **Balance**: whether the visual weight sits centred and slightly low.
+- **Palette**: how close the colour split is to the 60-30-10 rule.
+- **Similarity**: how many one-off blocks break the pattern.
 - **Overall**: the average of the four.
+
+The palette bar below the scores shows each colour group's share of the surface, with ticks at 60% and 90%. Hover a segment to see its hex code and share.
 
 ## Heatmap
 
-Tints every visible face by visual weight, from blue (light) to red (heavy), scaled to the scan's own range.
+**Heatmap** tints every visible face by visual weight, from blue (light) to red (heavy). The colours are scaled to the scan's own range, and orphan blocks get a yellow outline. Press it again on the next scan, or sneak + use in the air, to turn it off.
 
-![Heatmap](docs/heatmap.png)
+![Heatmap on a busy build](docs/heatmap-busy.png)
 
 ## Accents
 
-Two modes, toggled by the button beside "Accents":
+Accents come in two modes, toggled by the button next to "Accents":
 
-- **Harmony** (default): blocks that belong with the build's own palette. Each palette colour gets a darker shade, a lighter tint and a muted tone at the same hue. Greys bridge big lightness gaps between colours, so black, white and red gets charcoal, greys and maroons.
-- **Contrast**: complementary and split-complementary to the main colour, for a deliberate pop.
+- **Harmony** (default): blocks that belong with the build's own palette. Each palette colour gets a darker shade, a lighter tint and a muted tone at the same hue. Greys fill big lightness gaps between colours, so a black, white and red build gets charcoal, greys and maroons.
+- **Contrast**: colours complementary and split-complementary to the main colour, for a deliberate pop.
 
-Matches use CIE94 distance, so hue counts for more than lightness. Each palette colour takes turns, so every one gets a few matches near the top. Candidates are full blocks the build doesn't already use, without TNT or ores. When the lens is linked and online, only blocks stored in the ME network are listed, with amounts. Otherwise every block in the game is listed, minus machines. Hover over an accent to see which palette colour it matches.
+![Harmony and Contrast on the same build](docs/harmony-contrast.png)
+
+Candidates are full blocks the build doesn't already use, minus TNT and ores. When the lens is linked and its network is online, only blocks stored in the network are listed, with their amounts. Otherwise every block in the game is listed, minus machines. Hover an accent to see which palette colour it matches and how close it is.
 
 Click accents to pick them. With nothing picked, the top 8 are used.
 
-- **Terminal**: pulls 64 of each into the linked terminal's output slots.
-- **Applicator**: loads them into your Swatch Applicator and links it to the terminal.
-- **Save theme**: saves the build's main colours plus the accents as an AppliedSwatches theme (`appliedswatches/themes/`), ready to load in the Theme Terminal.
+- **Terminal**: pulls 64 of each into the linked terminal's output slots, using the network's power.
+- **Applicator**: loads them into your Swatch Applicator and links it to the terminal, ready to place.
+- **Save theme**: saves the build's main colours plus the accents as an AppliedSwatches theme in `<game dir>/appliedswatches/themes/`, ready for the Theme Terminal.
 
-## Building
+Here are four builds: top-heavy black, white and red; a flat stone box; busy stripes; and a wooden house.
 
-`./gradlew build`. AppliedSwatches isn't on a public maven yet, so its release jar is in `libs/`.
+![Harmony accents on four builds](docs/harmony-examples.png)
+
+## Details
+
+Recipe (shaped): fluix crystal on top, glass on each side of a spyglass, amethyst shard below.
+
+Requires Minecraft 1.21.1, NeoForge 21.1+, AE2 19.0.27 or newer and AppliedSwatches 0.2.0 or newer. Install on both client and server.
+
+Scanning runs on the client, so resource packs change the colours, just like in AppliedSwatches. The server only lists the network's stock and handles exports.
+
+Building: run `./gradlew build`. AppliedSwatches isn't on a public maven yet, so its release jar is in `libs/`.
+
+## FAQ: the theory behind the scores
+
+**1. What does the Lens actually look at?**
+It looks at every block face in the region that you could see, meaning faces touching air or a see-through block. Faces pressed against another block are skipped. Each face gets the average colour of its texture, the pixels you see in game with tints applied, converted to CIELAB, the colour space AppliedSwatches uses. It also gets a **busyness** value: how much lightness varies across the texture's pixels. Cobblestone is busy and concrete is calm.
+
+![Visible faces](docs/faq/q1-faces.png)
+
+**2. What is visual weight?**
+Painters and designers talk about elements that pull the eye harder than others. Dark colours, strong saturated colours and detailed textures all feel heavier than pale, grey, plain ones. The Lens gives every face a weight from 0 to 1:
+
+weight = 0.5 × darkness + 0.3 × saturation + 0.2 × busyness
+
+Darkness is (100 − L) / 100, saturation is CIELAB chroma / 60, and busyness is lightness spread / 20, each capped at 1. Snow weighs almost nothing and obsidian and red concrete weigh the most. The heatmap shows these values.
+
+![Visual weight](docs/faq/q2-weight.png)
+
+**3. How is contrast scored?**
+Contrast is the standard deviation (σ) of lightness (L\*) over all visible faces. Your eye reads shape from light and dark, so a build with no spread looks flat, like a single grey blob. Too much spread, such as pure black against pure white, reads as harsh and noisy. The score is a bell curve centred on σ = 18:
+
+score = 100 × e^−((σ − 18) / 11)²
+
+A smooth stone box scores 7 (σ 0), a wooden house scores 99 (σ 17), and a black, white and red build scores 2 (σ 40).
+
+![Contrast](docs/faq/q3-contrast.png)
+
+**4. How is balance scored?**
+The Lens finds two points: the middle of all visible faces, and the **centre of weight**, the same average with each face counted by its weight. If they line up, the build feels stable. If the weight drifts sideways, the build feels like it leans. Weight sitting slightly low (8% below the middle) feels grounded, like a building on a solid base. Weight above the middle feels top-heavy, and that's penalised fastest. Sideways drift is measured as a share of half the build's width, with the full penalty at 35%.
+
+score = 100 × (1 − ½ sideways penalty − ½ vertical penalty)
+
+![Balance](docs/faq/q4-balance.png)
+
+**5. What is 60-30-10?**
+It's a classic interior design rule: 60% of a space in a main colour, 30% in a secondary colour and 10% in an accent. It works because the eye gets a clear base, some variety and one point of interest. The Lens groups face colours that are less than ΔE 18 apart (the same CIELAB distance AppliedSwatches uses), sorts the groups by share, and adds up how far each share is from 60, 30 and 10. Any extra groups count against the 0% they should be.
+
+error = Σ |share − ideal|, score = 100 × (1 − error / 1.2)
+
+A single group reads "Monotone", and more than five main groups (3% or more each) reads "Busy".
+
+![Palette](docs/faq/q5-palette.png)
+
+**6. What is Gestalt similarity?**
+Gestalt psychology describes how we see groups before details. Its law of similarity says the eye groups things that look alike and treats them as a pattern. A single odd block with nothing like it nearby stands out as a mistake rather than a choice. The Lens counts **orphans**: block types used only once or twice in the scan, with no block of the same type in the 26 blocks around them. Repeating an accent in a rhythm, or grouping copies together, turns it back into a pattern. Builds under 20 blocks aren't judged.
+
+score = 100 × (1 − 20 × orphans / blocks)
+
+![Similarity](docs/faq/q6-similarity.png)
+
+**7. How are Harmony accents picked?**
+A good accent usually comes from colours the build already has. For each palette colour (with some chroma), the Lens makes three targets at the same hue: a **shade** (18 L darker), a **tint** (16 L lighter) and a **muted** tone (half the chroma). Neutral **bridging greys** fill lightness gaps of 22 or more between palette colours. So a black, white and red build gets maroons and red-browns from the red, and charcoal and stone greys between black and white.
+
+Blocks are matched to targets with **CIE94**, a newer ΔE formula than AppliedSwatches' ΔE76. It weighs differences in hue more than differences in lightness, so a wrong colour costs more than a slightly wrong brightness:
+
+ΔE94 = √( ΔL² + (ΔC / (1 + 0.045 C))² + (ΔH / (1 + 0.015 C))² )
+
+A block is suggested if it's within ΔE94 22 of its closest target and isn't nearly identical to a colour already in the build. Targets take turns in the list, so every palette colour gets a few matches near the top. Contrast mode skips all this and uses the complementary hues instead.
+
+![Harmony](docs/faq/q7-harmony.png)
