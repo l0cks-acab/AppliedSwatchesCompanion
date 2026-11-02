@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    " F ",
+    "GSG",
+    " A "
+  ],
+  "key": {
+    "F": {"item": "ae2:fluix_crystal"},
+    "G": {"item": "minecraft:glass"},
+    "S": {"item": "minecraft:spyglass"},
+    "A": {"item": "minecraft:amethyst_shard"}
+  },
+  "result": {"id": "appliedswatches_companion:swatch_lens", "count": 1}
+}

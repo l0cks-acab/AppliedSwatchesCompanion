@@ -1,0 +1,58 @@
+name: Release
+
+# Push a tag like v0.2.0 (matching mod_version in gradle.properties) to publish.
+# Needs repo secrets CURSEFORGE_TOKEN and MODRINTH_TOKEN, and repo variables
+# CURSEFORGE_ID and MODRINTH_ID set to the project ids on each site.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew build --no-daemon
+
+      - name: Read version
+        id: ver
+        run: echo "version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Extract changelog
+        run: awk -v v="${{ steps.ver.outputs.version }}" '$0 ~ "^## " {p = index($0, v) > 0; next} p' CHANGELOG.md > release-notes.md
+
+      - uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          name: AppliedSwatches Companion ${{ steps.ver.outputs.version }}
+          version: ${{ steps.ver.outputs.version }}
+          version-type: release
+          changelog-file: release-notes.md
+          files: build/libs/!(*-@(sources|javadoc)).jar
+          loaders: neoforge
+          game-versions: 1.21.1
+          java: 21
+
+          modrinth-id: ${{ vars.MODRINTH_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          modrinth-dependencies: |
+            ae2(required)
+            appliedswatches(required)
+
+          curseforge-id: ${{ vars.CURSEFORGE_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          curseforge-dependencies: |
+            applied-energistics-2(required)
+            appliedswatches(required)
+
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-tag: v${{ steps.ver.outputs.version }}
