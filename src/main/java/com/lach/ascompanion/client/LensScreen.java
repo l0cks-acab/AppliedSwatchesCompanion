@@ -245,8 +245,12 @@ public class LensScreen extends Screen {
         onClose();
     }
 
-    /** Saves the build's main colours plus the accents as an AppliedSwatches theme. */
+    /** Asks for a name, then saves the build's main colours plus the accents as an AppliedSwatches theme. */
     private void saveTheme() {
+        minecraft.setScreen(new NamePrompt(this, Component.translatable(P + "theme_name"), scanName(), this::saveTheme));
+    }
+
+    private void saveTheme(String name) {
         List<Integer> colours = new ArrayList<>();
         for (Analysis.Cluster c : analysis.clusters()) if (c.share() >= 0.03f && colours.size() < 5) colours.add(c.rgb());
         List<Item> items = chosen();
@@ -257,8 +261,9 @@ public class LensScreen extends Screen {
             if (info != null && colours.size() < Theme.MAX_COLORS && !colours.contains(info.rgb())) colours.add(info.rgb());
         }
         if (colours.isEmpty()) return;
-        Theme theme = new Theme(scanName(), colours.stream().mapToInt(Integer::intValue).toArray(), blocks, -1, false);
+        Theme theme = new Theme(name, colours.stream().mapToInt(Integer::intValue).toArray(), blocks, -1, false);
         Path file = ThemeManager.userDir().resolve(theme.fileName());
+        for (int i = 2; Files.exists(file); i++) file = ThemeManager.userDir().resolve(theme.fileName().replace(".json", "_" + i + ".json"));
         Minecraft mc = Minecraft.getInstance();
         try {
             Files.createDirectories(file.getParent());
