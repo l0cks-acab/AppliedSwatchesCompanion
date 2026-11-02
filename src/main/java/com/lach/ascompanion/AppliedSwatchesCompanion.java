@@ -6,7 +6,7 @@ import com.lach.ascompanion.net.StockRequestPayload;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
@@ -30,7 +30,7 @@ public class AppliedSwatchesCompanion {
 
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<LensData>> LENS_DATA = COMPONENTS.registerComponentType("lens",
             b -> b.persistent(LensData.CODEC).networkSynchronized(LensData.STREAM_CODEC));
-    public static final DeferredItem<SwatchLensItem> LENS = ITEMS.registerItem("swatch_lens", SwatchLensItem::new, new Item.Properties().stacksTo(1));
+    public static final DeferredItem<SwatchLensItem> LENS = ITEMS.registerItem("swatch_lens", SwatchLensItem::new, p -> p.stacksTo(1));
 
     public AppliedSwatchesCompanion(IEventBus modBus, ModContainer container) {
         ITEMS.register(modBus);
@@ -40,8 +40,8 @@ public class AppliedSwatchesCompanion {
         LOGGER.info("{} loaded", MODID);
     }
 
-    public static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath(MODID, path);
+    public static Identifier id(String path) {
+        return Identifier.fromNamespaceAndPath(MODID, path);
     }
 
     private static void creativeTabs(BuildCreativeModeTabContentsEvent event) {

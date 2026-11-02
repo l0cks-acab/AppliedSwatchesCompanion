@@ -9,9 +9,10 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.ShapeRenderer;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -23,9 +24,9 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
-import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.joml.Matrix4f;
 
 /** Scan flow, the region outline and the visual weight heatmap. */
@@ -63,7 +64,7 @@ public final class LensClient {
     /** Asks the server for the linked network's stock; the scan runs when the answer arrives. */
     public static void startScan() {
         waiting = true;
-        PacketDistributor.sendToServer(new StockRequestPayload());
+        ClientPacketDistributor.sendToServer(new StockRequestPayload());
     }
 
     public static void onStock(StockPayload p) {
@@ -84,7 +85,7 @@ public final class LensClient {
             wMax = Math.max(wMax, w);
         }
         if (last.faces() == 0) {
-            mc.player.displayClientMessage(Component.translatable("msg.appliedswatches_companion.empty").withStyle(ChatFormatting.RED), true);
+            mc.player.sendOverlayMessage(Component.translatable("msg.appliedswatches_companion.empty").withStyle(ChatFormatting.RED));
             return;
         }
         com.mojang.logging.LogUtils.getLogger().debug("Lens scan: {} faces in {} ms", last.faces(), (System.nanoTime() - t) / 1_000_000);
@@ -106,44 +107,49 @@ public final class LensClient {
     }
 
     @SubscribeEvent
-    static void render(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
+    static void render(RenderLevelStageEvent.AfterTranslucentBlocks event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         ItemStack lens = heldLens();
         boolean drawHeat = heatmap && last != null && last.dimension() == mc.level.dimension();
         if (lens.isEmpty() && !drawHeat) return;
 
-        Vec3 cam = event.getCamera().getPosition();
+        Vec3 cam = event.getLevelRenderState().cameraRenderState.pos;
         PoseStack pose = event.getPoseStack();
+        if (pose == null) return;
         pose.pushPose();
         pose.translate(-cam.x, -cam.y, -cam.z);
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
 
         if (drawHeat) {
-            VertexConsumer quads = buffers.getBuffer(RenderType.debugQuads());
+            VertexConsumer quads = buffers.getBuffer(RenderTypes.debugQuads());
             Matrix4f m = pose.last().pose();
             int n = Math.min(last.faces(), MAX_DRAWN);
             for (int i = 0; i < n; i++) face(quads, m, last.pos(i), last.dir(i), heat((last.faceWeight()[i] - wMin) / Math.max(0.05f, wMax - wMin)));
-            buffers.endBatch(RenderType.debugQuads());
+            buffers.endBatch(RenderTypes.debugQuads());
         }
 
-        VertexConsumer lines = buffers.getBuffer(RenderType.lines());
+        VertexConsumer lines = buffers.getBuffer(RenderTypes.lines());
         if (drawHeat) for (BlockPos o : last.orphans())
-            LevelRenderer.renderLineBox(pose, lines, new AABB(o).inflate(0.02), 1f, 0.85f, 0.2f, 1f);
+            box(pose, lines, new AABB(o).inflate(0.02), 1f, 0.85f, 0.2f, 1f);
         if (!lens.isEmpty()) {
             LensData d = SwatchLensItem.data(lens);
-            d.a().ifPresent(a -> LevelRenderer.renderLineBox(pose, lines, new AABB(a).inflate(0.01), 0.3f, 0.9f, 1f, 1f));
-            d.b().ifPresent(b -> LevelRenderer.renderLineBox(pose, lines, new AABB(b).inflate(0.01), 1f, 0.45f, 0.9f, 1f));
+            d.a().ifPresent(a -> box(pose, lines, new AABB(a).inflate(0.01), 0.3f, 0.9f, 1f, 1f));
+            d.b().ifPresent(b -> box(pose, lines, new AABB(b).inflate(0.01), 1f, 0.45f, 0.9f, 1f));
             if (d.hasRegion()) {
                 AABB box = new AABB(Vec3.atLowerCornerOf(d.a().get()), Vec3.atLowerCornerOf(d.b().get()));
                 box = new AABB(box.minX, box.minY, box.minZ, box.maxX + 1, box.maxY + 1, box.maxZ + 1).inflate(0.03);
-                if (d.tooBig()) LevelRenderer.renderLineBox(pose, lines, box, 1f, 0.2f, 0.2f, 1f);
-                else LevelRenderer.renderLineBox(pose, lines, box, 0.72f, 0.5f, 1f, 1f);
+                if (d.tooBig()) box(pose, lines, box, 1f, 0.2f, 0.2f, 1f);
+                else box(pose, lines, box, 0.72f, 0.5f, 1f, 1f);
             }
         }
-        buffers.endBatch(RenderType.lines());
+        buffers.endBatch(RenderTypes.lines());
         pose.popPose();
+    }
+
+    private static void box(PoseStack pose, VertexConsumer lines, AABB box, float r, float g, float b, float a) {
+        int c = (int) (a * 255) << 24 | (int) (r * 255) << 16 | (int) (g * 255) << 8 | (int) (b * 255);
+        ShapeRenderer.renderShape(pose, lines, Shapes.create(box), 0, 0, 0, c, 2f);
     }
 
     /** Light blue for light faces through to red for heavy ones. */
@@ -181,7 +187,7 @@ public final class LensClient {
     }
 
     @SubscribeEvent
-    static void reload(RegisterClientReloadListenersEvent event) {
-        event.registerReloadListener((ResourceManagerReloadListener) rm -> FaceColors.clear());
+    static void reload(AddClientReloadListenersEvent event) {
+        event.addListener(AppliedSwatchesCompanion.id("face_colors"), (ResourceManagerReloadListener) rm -> FaceColors.clear());
     }
 }

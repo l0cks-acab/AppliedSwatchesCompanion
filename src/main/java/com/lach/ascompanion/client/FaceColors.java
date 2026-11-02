@@ -2,17 +2,17 @@ package com.lach.ascompanion.client;
 
 import com.lach.appliedswatches.client.ColorMath;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import com.lach.appliedswatches.client.ModelQuads;
+import net.minecraft.client.color.block.BlockTintSource;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.renderer.texture.SpriteContents;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.resources.Identifier;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.client.model.data.ModelData;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -36,7 +36,7 @@ public final class FaceColors {
     }
 
     private static final Map<Key, Face> FACES = new HashMap<>();
-    private static final Map<ResourceLocation, Sprite> SPRITES = new HashMap<>();
+    private static final Map<Identifier, Sprite> SPRITES = new HashMap<>();
     private static final Face NONE = new Face(0, new float[3], -1);
 
     private FaceColors() {
@@ -55,18 +55,14 @@ public final class FaceColors {
 
     private static Face compute(BlockState state, Direction dir, BlockAndTintGetter level, BlockPos pos) {
         Minecraft mc = Minecraft.getInstance();
-        BakedModel model = mc.getBlockRenderer().getBlockModel(state);
-        RandomSource rand = RandomSource.create();
         List<BakedQuad> quads = new ArrayList<>();
         try {
-            rand.setSeed(42);
-            quads.addAll(model.getQuads(state, dir, rand, ModelData.EMPTY, null));
-            rand.setSeed(42);
-            for (BakedQuad q : model.getQuads(state, null, rand, ModelData.EMPTY, null)) if (q.getDirection() == dir) quads.add(q);
-            if (quads.isEmpty()) {
-                rand.setSeed(42);
-                quads.addAll(model.getQuads(state, null, rand, ModelData.EMPTY, null));
+            List<BlockStateModelPart> parts = ModelQuads.parts(state);
+            for (BlockStateModelPart part : parts) {
+                quads.addAll(part.getQuads(dir));
+                for (BakedQuad q : part.getQuads(null)) if (q.direction() == dir) quads.add(q);
             }
+            if (quads.isEmpty()) for (BlockStateModelPart part : parts) quads.addAll(part.getQuads(null));
         } catch (RuntimeException ignored) {
         }
         long r = 0, g = 0, b = 0, n = 0;
@@ -74,11 +70,11 @@ public final class FaceColors {
         List<TextureAtlasSprite> sprites = new ArrayList<>();
         List<Integer> tints = new ArrayList<>();
         for (BakedQuad q : quads) {
-            sprites.add(q.getSprite());
-            tints.add(q.isTinted() ? q.getTintIndex() : -1);
+            sprites.add(q.materialInfo().sprite());
+            tints.add(q.materialInfo().isTinted() ? q.materialInfo().tintIndex() : -1);
         }
         if (sprites.isEmpty()) {
-            sprites.add(model.getParticleIcon(ModelData.EMPTY));
+            sprites.add(ModelQuads.particle(state));
             tints.add(-1);
         }
         for (int i = 0; i < sprites.size(); i++) {
@@ -88,7 +84,8 @@ public final class FaceColors {
             if (tints.get(i) >= 0) {
                 int tint;
                 try {
-                    tint = mc.getBlockColors().getColor(state, level, pos, tints.get(i));
+                    BlockTintSource src = mc.getBlockColors().getTintSource(state, tints.get(i));
+                    tint = src == null ? -1 : src.colorInWorld(state, level, pos);
                 } catch (RuntimeException e) {
                     tint = -1;
                 }
@@ -119,9 +116,9 @@ public final class FaceColors {
             int n = 0;
             for (int y = 0; y < h; y++)
                 for (int x = 0; x < w; x++) {
-                    int p = img.getPixelRGBA(x, y);
+                    int p = img.getPixel(x, y);
                     if ((p >>> 24) < 128) continue;
-                    int pr = p & 0xFF, pg = (p >> 8) & 0xFF, pb = (p >> 16) & 0xFF;
+                    int pr = (p >> 16) & 0xFF, pg = (p >> 8) & 0xFF, pb = p & 0xFF;
                     r += pr;
                     g += pg;
                     b += pb;

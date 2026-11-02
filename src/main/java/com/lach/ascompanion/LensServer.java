@@ -18,8 +18,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.ItemHandlerHelper;
-import net.neoforged.neoforge.items.ItemStackHandler;
+import com.lach.appliedswatches.OutputHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,7 +38,7 @@ public final class LensServer {
     }
 
     static @Nullable SwatchTerminalBlockEntity terminal(ServerPlayer player, GlobalPos link) {
-        ServerLevel level = player.server.getLevel(link.dimension());
+        ServerLevel level = player.level().getServer().getLevel(link.dimension());
         if (level == null || !level.isLoaded(link.pos())) return null;
         return level.getBlockEntity(link.pos()) instanceof SwatchTerminalBlockEntity be ? be : null;
     }
@@ -72,7 +72,7 @@ public final class LensServer {
         Optional<GlobalPos> link = SwatchLensItem.data(lens).link();
         SwatchTerminalBlockEntity be = link.map(l -> terminal(player, l)).orElse(null);
         if (be == null) {
-            player.displayClientMessage(Component.translatable("msg.appliedswatches_companion.no_terminal").withStyle(ChatFormatting.RED), false);
+            player.sendSystemMessage(Component.translatable("msg.appliedswatches_companion.no_terminal").withStyle(ChatFormatting.RED));
             return;
         }
         List<Item> blocks = p.items().stream().filter(i -> i instanceof BlockItem).distinct().toList();
@@ -85,26 +85,26 @@ public final class LensServer {
     private static void export(ServerPlayer player, SwatchTerminalBlockEntity be, List<Item> items, int perItem) {
         IGrid grid = grid(be);
         if (grid == null) {
-            player.displayClientMessage(Component.translatable("msg.appliedswatches_companion.offline").withStyle(ChatFormatting.RED), false);
+            player.sendSystemMessage(Component.translatable("msg.appliedswatches_companion.offline").withStyle(ChatFormatting.RED));
             return;
         }
         var storage = grid.getStorageService().getInventory();
         var energy = grid.getEnergyService();
         var src = IActionSource.ofPlayer(player, be);
-        ItemStackHandler out = be.output();
+        OutputHandler out = be.output();
         int moved = 0;
         for (Item item : items) {
             AEItemKey key = AEItemKey.of(item);
-            ItemStack left = ItemHandlerHelper.insertItemStacked(out, key.toStack(perItem), true);
-            int fits = perItem - left.getCount();
+            ItemResource res = ItemResource.of(item);
+            int fits = out.insertStacked(res, perItem, true);
             if (fits <= 0) continue;
             long got = StorageHelper.poweredExtraction(energy, storage, key, fits, src);
             if (got <= 0) continue;
-            ItemStack rest = ItemHandlerHelper.insertItemStacked(out, key.toStack((int) got), false);
-            if (!rest.isEmpty()) StorageHelper.poweredInsert(energy, storage, key, rest.getCount(), src);
+            int rest = (int) got - out.insertStacked(res, (int) got, false);
+            if (rest > 0) StorageHelper.poweredInsert(energy, storage, key, rest, src);
             moved++;
         }
-        player.displayClientMessage(Component.translatable("msg.appliedswatches_companion.exported", moved).withStyle(ChatFormatting.GREEN), false);
+        player.sendSystemMessage(Component.translatable("msg.appliedswatches_companion.exported", moved).withStyle(ChatFormatting.GREEN));
     }
 
     private static void loadApplicator(ServerPlayer player, GlobalPos link, List<Item> blocks, String name) {
@@ -113,11 +113,11 @@ public final class LensServer {
         for (int i = 0; target.isEmpty() && i < player.getInventory().getContainerSize(); i++)
             if (player.getInventory().getItem(i).is(AppliedSwatches.APPLICATOR.get())) target = player.getInventory().getItem(i);
         if (target.isEmpty()) {
-            player.displayClientMessage(Component.translatable("msg.appliedswatches_companion.no_applicator").withStyle(ChatFormatting.RED), false);
+            player.sendSystemMessage(Component.translatable("msg.appliedswatches_companion.no_applicator").withStyle(ChatFormatting.RED));
             return;
         }
         ApplicatorData old = ApplicatorItem.data(target);
         target.set(AppliedSwatches.APPLICATOR_DATA.get(), new ApplicatorData(blocks, 0, name, Optional.of(link), old.mode(), old.size()));
-        player.displayClientMessage(Component.translatable("msg.appliedswatches_companion.applicator_loaded", blocks.size(), name).withStyle(ChatFormatting.GREEN), false);
+        player.sendSystemMessage(Component.translatable("msg.appliedswatches_companion.applicator_loaded", blocks.size(), name).withStyle(ChatFormatting.GREEN));
     }
 }

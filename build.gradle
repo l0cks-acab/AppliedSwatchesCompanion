@@ -9,15 +9,11 @@ group = mod_group_id
 
 base { archivesName = mod_id }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 neoForge {
     version = project.neo_version
 
-    parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.parchment_minecraft_version
-    }
 
     runs {
         client {
@@ -30,7 +26,7 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
         data {
-            data()
+            clientData()
             programArguments.addAll '--mod', project.mod_id, '--all',
                     '--output', file('src/generated/resources/').getAbsolutePath(),
                     '--existing', file('src/main/resources/').getAbsolutePath()
@@ -49,12 +45,11 @@ neoForge {
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
-    maven { url = 'https://modmaven.dev/' ; content { includeGroup 'appeng' } }
+    maven { url = 'https://maven.neoforged.net/releases' ; content { includeGroup 'org.appliedenergistics' } }
 }
 
 dependencies {
-    compileOnly "appeng:appliedenergistics2:${ae2_version}:api"
-    runtimeOnly "appeng:appliedenergistics2:${ae2_version}"
+    implementation "org.appliedenergistics:appliedenergistics2:${ae2_version}"
     // AppliedSwatches is not on a public maven yet, so the release jar lives in libs/.
     implementation files("libs/appliedswatches-${appliedswatches_version}.jar")
 }
@@ -65,7 +60,6 @@ var generateModMetadata = tasks.register('generateModMetadata', ProcessResources
             minecraft_version_range: minecraft_version_range,
             neo_version            : neo_version,
             neo_version_range      : neo_version_range,
-            loader_version_range   : loader_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,

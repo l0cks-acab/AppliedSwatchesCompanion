@@ -1,5 +1,3 @@
-modLoader="javafml"
-loaderVersion="${loader_version_range}"
 license="${mod_license}"
 
 [[mods]]
@@ -27,13 +25,13 @@ description='''${mod_description}'''
 [[dependencies.${mod_id}]]
     modId="ae2"
     type="required"
-    versionRange="[19.0.0,)"
+    versionRange="[26.1.0,)"
     ordering="AFTER"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="appliedswatches"
     type="required"
-    versionRange="[${appliedswatches_version},)"
+    versionRange="[0.2.1,)"
     ordering="AFTER"
     side="BOTH"

@@ -7,15 +7,15 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 
-import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Sneak + use on a Swatch Terminal links it. Sneak + use on a block sets corner A, use sets corner B.
@@ -37,11 +37,11 @@ public class SwatchLensItem extends Item {
         if (player == null) return InteractionResult.PASS;
         ItemStack stack = ctx.getItemInHand();
         BlockPos pos = ctx.getClickedPos();
-        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (level.isClientSide()) return InteractionResult.SUCCESS;
         LensData d = data(stack);
         if (player.isShiftKeyDown() && level.getBlockState(pos).getBlock() instanceof SwatchTerminalBlock) {
             stack.set(AppliedSwatchesCompanion.LENS_DATA.get(), d.withLink(GlobalPos.of(level.dimension(), pos.immutable())));
-            player.displayClientMessage(Component.translatable("msg.appliedswatches_companion.linked", pos.getX(), pos.getY(), pos.getZ()).withStyle(ChatFormatting.GREEN), true);
+            player.sendOverlayMessage(Component.translatable("msg.appliedswatches_companion.linked", pos.getX(), pos.getY(), pos.getZ()).withStyle(ChatFormatting.GREEN));
             return InteractionResult.CONSUME;
         }
         LensData next = player.isShiftKeyDown() ? d.withA(pos) : d.withB(pos);
@@ -53,44 +53,44 @@ public class SwatchLensItem extends Item {
             msg = msg.copy().append(" ").append(Component.translatable("msg.appliedswatches_companion.size", s[0], s[1], s[2])
                     .withStyle(next.tooBig() ? ChatFormatting.RED : ChatFormatting.GRAY));
         }
-        player.displayClientMessage(msg, true);
+        player.sendOverlayMessage(msg);
         return InteractionResult.CONSUME;
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         LensData d = data(stack);
         if (player.isShiftKeyDown()) {
-            if (level.isClientSide) ClientBridge.clear();
+            if (level.isClientSide()) ClientBridge.clear();
             else {
                 stack.set(AppliedSwatchesCompanion.LENS_DATA.get(), d.cleared());
-                player.displayClientMessage(Component.translatable("msg.appliedswatches_companion.cleared"), true);
+                player.sendOverlayMessage(Component.translatable("msg.appliedswatches_companion.cleared"));
             }
-            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
+            return InteractionResult.SUCCESS;
         }
         if (!d.hasRegion()) {
-            if (!level.isClientSide) player.displayClientMessage(Component.translatable("msg.appliedswatches_companion.no_region").withStyle(ChatFormatting.RED), true);
-            return InteractionResultHolder.fail(stack);
+            if (!level.isClientSide()) player.sendOverlayMessage(Component.translatable("msg.appliedswatches_companion.no_region").withStyle(ChatFormatting.RED));
+            return InteractionResult.FAIL;
         }
         if (d.tooBig()) {
-            if (!level.isClientSide) player.displayClientMessage(Component.translatable("msg.appliedswatches_companion.too_big", LensData.MAX_SIZE).withStyle(ChatFormatting.RED), true);
-            return InteractionResultHolder.fail(stack);
+            if (!level.isClientSide()) player.sendOverlayMessage(Component.translatable("msg.appliedswatches_companion.too_big", LensData.MAX_SIZE).withStyle(ChatFormatting.RED));
+            return InteractionResult.FAIL;
         }
-        if (level.isClientSide) ClientBridge.startScan();
-        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
+        if (level.isClientSide()) ClientBridge.startScan();
+        return InteractionResult.SUCCESS;
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, TooltipContext ctx, List<Component> tip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, TooltipContext ctx, TooltipDisplay display, Consumer<Component> tip, TooltipFlag flag) {
         LensData d = data(stack);
         d.link().ifPresentOrElse(
-                l -> tip.add(Component.translatable("tooltip.appliedswatches_companion.linked", l.pos().getX(), l.pos().getY(), l.pos().getZ()).withStyle(ChatFormatting.GREEN)),
-                () -> tip.add(Component.translatable("tooltip.appliedswatches_companion.unlinked").withStyle(ChatFormatting.GRAY)));
+                l -> tip.accept(Component.translatable("tooltip.appliedswatches_companion.linked", l.pos().getX(), l.pos().getY(), l.pos().getZ()).withStyle(ChatFormatting.GREEN)),
+                () -> tip.accept(Component.translatable("tooltip.appliedswatches_companion.unlinked").withStyle(ChatFormatting.GRAY)));
         int[] s = d.size();
-        if (s != null) tip.add(Component.translatable("msg.appliedswatches_companion.size", s[0], s[1], s[2]).withStyle(ChatFormatting.GRAY));
-        tip.add(Component.translatable("tooltip.appliedswatches_companion.help1").withStyle(ChatFormatting.DARK_GRAY));
-        tip.add(Component.translatable("tooltip.appliedswatches_companion.help2").withStyle(ChatFormatting.DARK_GRAY));
-        tip.add(Component.translatable("tooltip.appliedswatches_companion.help3").withStyle(ChatFormatting.DARK_GRAY));
+        if (s != null) tip.accept(Component.translatable("msg.appliedswatches_companion.size", s[0], s[1], s[2]).withStyle(ChatFormatting.GRAY));
+        tip.accept(Component.translatable("tooltip.appliedswatches_companion.help1").withStyle(ChatFormatting.DARK_GRAY));
+        tip.accept(Component.translatable("tooltip.appliedswatches_companion.help2").withStyle(ChatFormatting.DARK_GRAY));
+        tip.accept(Component.translatable("tooltip.appliedswatches_companion.help3").withStyle(ChatFormatting.DARK_GRAY));
     }
 }

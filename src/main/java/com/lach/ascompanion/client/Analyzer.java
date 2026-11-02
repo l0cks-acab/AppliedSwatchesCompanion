@@ -36,7 +36,7 @@ public final class Analyzer {
     private Analyzer() {
     }
 
-    public static Analysis scan(Level level, BlockPos a, BlockPos b) {
+    public static Analysis scan(net.minecraft.client.multiplayer.ClientLevel level, BlockPos a, BlockPos b) {
         BlockPos min = new BlockPos(Math.min(a.getX(), b.getX()), Math.min(a.getY(), b.getY()), Math.min(a.getZ(), b.getZ()));
         BlockPos max = new BlockPos(Math.max(a.getX(), b.getX()), Math.max(a.getY(), b.getY()), Math.max(a.getZ(), b.getZ()));
         List<Long> pos = new ArrayList<>();
@@ -56,7 +56,7 @@ public final class Analyzer {
                     boolean seen = false;
                     for (Direction d : Direction.values()) {
                         BlockPos n = p.relative(d);
-                        if (!Block.shouldRenderFace(state, level, p, d, n)) continue;
+                        if (!Block.shouldRenderFace(level, p, state, level.getBlockState(n), d)) continue;
                         FaceColors.Face f = FaceColors.get(state, d, level, p);
                         if (f == null) continue;
                         seen = true;
@@ -129,7 +129,7 @@ public final class Analyzer {
             args[Analysis.BALANCE] = new Object[0];
         } else if (side > 0.1) {
             verdicts[Analysis.BALANCE] = "leans";
-            args[Analysis.BALANCE] = new Object[]{Direction.getNearest(dx, 0, dz).getName()};
+            args[Analysis.BALANCE] = new Object[]{Direction.getApproximateNearest(dx, 0, dz).getName()};
         } else {
             verdicts[Analysis.BALANCE] = "balanced";
             args[Analysis.BALANCE] = new Object[0];
