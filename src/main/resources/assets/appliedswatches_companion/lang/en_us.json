@@ -59,6 +59,8 @@
   "gui.appliedswatches_companion.to_terminal": "Terminal",
   "gui.appliedswatches_companion.to_applicator": "Applicator",
   "gui.appliedswatches_companion.save_theme": "Save theme",
+  "gui.appliedswatches_companion.theme_name": "Theme name",
+  "gui.appliedswatches_companion.save": "Save",
   "gui.appliedswatches_companion.stored": "Stored: %s",
   "gui.appliedswatches_companion.distance": "Off target by %s",
   "gui.appliedswatches_companion.share": "%s%% of surface",
