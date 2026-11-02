@@ -6,6 +6,10 @@ Point the **Swatch Lens** at a build and it tells you how it reads: contrast, vi
 
 ![Lens screen](docs/lens-screen.png)
 
+Harmony accents on four builds (top-heavy black/white/red, flat stone, busy stripes, wooden house):
+
+![Harmony examples](docs/harmony-examples.png)
+
 ## Swatch Lens
 
 | Action | What it does |
@@ -38,7 +42,12 @@ Tints every visible face by visual weight, from blue (light) to red (heavy), sca
 
 ## Accents
 
-Accent targets are complementary and split-complementary to the build's main colour, and pushed away from its average lightness. The three target colours show beside "Accents". Candidates are full blocks the build doesn't already use, ranked by how close they are to a target. When the lens is linked and online, only blocks stored in the ME network are listed, with amounts. Otherwise every block in the game is listed, minus machines.
+Two modes, toggled by the button beside "Accents":
+
+- **Harmony** (default): blocks that belong with the build's own palette. Each palette colour gets a darker shade, a lighter tint and a muted tone at the same hue. Greys bridge big lightness gaps between colours, so black, white and red gets charcoal, greys and maroons.
+- **Contrast**: complementary and split-complementary to the main colour, for a deliberate pop.
+
+Matches use CIE94 distance, so hue counts for more than lightness. Each palette colour takes turns, so every one gets a few matches near the top. Candidates are full blocks the build doesn't already use, without TNT or ores. When the lens is linked and online, only blocks stored in the ME network are listed, with amounts. Otherwise every block in the game is listed, minus machines. Hover over an accent to see which palette colour it matches.
 
 Click accents to pick them. With nothing picked, the top 8 are used.
 

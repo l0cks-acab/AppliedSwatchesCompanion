@@ -60,11 +60,18 @@
   "gui.appliedswatches_companion.to_applicator": "Applicator",
   "gui.appliedswatches_companion.save_theme": "Save theme",
   "gui.appliedswatches_companion.stored": "Stored: %s",
-  "gui.appliedswatches_companion.scheme.complementary": "Complementary",
-  "gui.appliedswatches_companion.scheme.split": "Split-complementary",
   "gui.appliedswatches_companion.distance": "Off target by %s",
   "gui.appliedswatches_companion.share": "%s%% of surface",
   "gui.appliedswatches_companion.to_terminal.tip": "Pull %s of each picked accent from ME into the linked terminal's output",
   "gui.appliedswatches_companion.to_applicator.tip": "Load the picked accents into your Swatch Applicator, linked to the terminal",
-  "gui.appliedswatches_companion.save_theme.tip": "Save the build's main colours plus the accents as an AppliedSwatches theme"
+  "gui.appliedswatches_companion.save_theme.tip": "Save the build's main colours plus the accents as an AppliedSwatches theme",
+  "gui.appliedswatches_companion.mode.harmony": "Harmony",
+  "gui.appliedswatches_companion.mode.contrast": "Contrast",
+  "gui.appliedswatches_companion.mode.tip": "Harmony: shades, tints, muted tones and bridging greys of the build's own colours. Contrast: complementary colours that pop.",
+  "gui.appliedswatches_companion.kind.shade": "Shade of %s",
+  "gui.appliedswatches_companion.kind.tint": "Tint of %s",
+  "gui.appliedswatches_companion.kind.muted": "Muted %s",
+  "gui.appliedswatches_companion.kind.bridge": "Bridging grey",
+  "gui.appliedswatches_companion.kind.complementary": "Complementary to %s",
+  "gui.appliedswatches_companion.kind.split": "Split-complementary to %s"
 }

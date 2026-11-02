@@ -41,8 +41,9 @@ public class LensScreen extends Screen {
 
     private final Analysis analysis;
     private final StockPayload stock;
-    private final List<Accents.Accent> accents;
-    private final List<Accents.Target> targets;
+    /** Kept between scans. */
+    private static Accents.Mode mode = Accents.Mode.HARMONY;
+    private List<Accents.Accent> accents;
     private final Set<Item> picked = new LinkedHashSet<>();
     private int left, top;
     private Button terminalBtn, applicatorBtn;
@@ -51,8 +52,16 @@ public class LensScreen extends Screen {
         super(Component.translatable(P + "title"));
         this.analysis = analysis;
         this.stock = stock;
-        this.accents = stock.online() ? Accents.suggest(analysis, stock.items(), stock.amounts()) : Accents.suggest(analysis, null, null);
-        this.targets = Accents.targets(analysis);
+        refreshAccents();
+    }
+
+    private void refreshAccents() {
+        accents = stock.online() ? Accents.suggest(analysis, mode, stock.items(), stock.amounts()) : Accents.suggest(analysis, mode, null, null);
+        picked.clear();
+    }
+
+    private Component modeLabel() {
+        return Component.translatable(P + "mode." + mode.name().toLowerCase());
     }
 
     @Override
@@ -71,6 +80,16 @@ public class LensScreen extends Screen {
                 .tooltip(Tooltip.create(Component.translatable(P + "to_applicator.tip"))).build());
         addRenderableWidget(Button.builder(Component.translatable(P + "save_theme"), b -> saveTheme()).bounds(x + 3 * (bw + gap), y, bw, 18)
                 .tooltip(Tooltip.create(Component.translatable(P + "save_theme.tip"))).build());
+        addRenderableWidget(Button.builder(modeLabel(), b -> {
+            mode = mode == Accents.Mode.HARMONY ? Accents.Mode.CONTRAST : Accents.Mode.HARMONY;
+            b.setMessage(modeLabel());
+            refreshAccents();
+            updateButtons();
+        }).bounds(left + GRID_X + COLS * CELL - 58, top + 16, 58, 14).tooltip(Tooltip.create(Component.translatable(P + "mode.tip"))).build());
+        updateButtons();
+    }
+
+    private void updateButtons() {
         terminalBtn.active = stock.online() && !accents.isEmpty();
         applicatorBtn.active = stock.linked() && !accents.isEmpty();
     }
@@ -116,12 +135,6 @@ public class LensScreen extends Screen {
 
         // Accents
         g.drawString(font, Component.translatable(P + "accents"), left + GRID_X, top + 20, TEXT, false);
-        int tx = left + GRID_X + COLS * CELL;
-        for (int i = targets.size() - 1; i >= 0; i--) {
-            tx -= 10;
-            g.fill(tx, top + 20, tx + 8, top + 28, EDGE);
-            g.fill(tx + 1, top + 21, tx + 7, top + 27, 0xFF000000 | targets.get(i).rgb());
-        }
         Accents.Accent hover = null;
         for (int r = 0; r < ROWS; r++)
             for (int c = 0; c < COLS; c++) {
@@ -171,7 +184,11 @@ public class LensScreen extends Screen {
             List<Component> tip = new ArrayList<>();
             tip.add(hover.item().getDescription());
             if (hover.amount() >= 0) tip.add(Component.translatable(P + "stored", hover.amount()).withStyle(ChatFormatting.GRAY));
-            tip.add(Component.translatable(P + "scheme." + hover.scheme().name().toLowerCase()).withStyle(ChatFormatting.AQUA));
+            Accents.Kind kind = hover.target().kind();
+            int srcRgb = hover.target().sourceRgb();
+            int kindColour = kind == Accents.Kind.BRIDGE || com.lach.appliedswatches.client.ColorMath.lab(srcRgb)[0] < 35 ? 0xBBBBBB : srcRgb | 0x202020;
+            tip.add(Component.translatable(P + "kind." + kind.name().toLowerCase(), Theme.formatColor(hover.target().sourceRgb()))
+                    .withStyle(st -> st.withColor(kindColour)));
             tip.add(Component.translatable(P + "distance", Math.round(hover.dist())).withStyle(ChatFormatting.DARK_GRAY));
             g.renderComponentTooltip(font, tip, mouseX, mouseY);
         } else if (hoverCluster != null) {
