@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- Built against AppliedSwatches 0.2.3 (redesigned Swatch Applicator, Creative Swatch Cell), which is now the minimum version.
+
 ## 0.1.1
 
 - Save theme now asks for a name first (prefilled with the scan time). An existing theme with the same name is kept and the new one gets a _2 suffix.
