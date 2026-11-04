@@ -7,6 +7,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -15,13 +16,18 @@ import java.util.Set;
  */
 public record Analysis(ResourceKey<Level> dimension, BlockPos min, BlockPos max,
                        long[] facePos, byte[] faceDir, float[] faceWeight,
-                       List<BlockPos> orphans, List<Cluster> clusters, Set<Block> used,
+                       List<BlockPos> orphans, List<Cluster> clusters, Map<Block, Integer> counts,
                        float meanL, float spreadL, int[] scores, String[] verdicts, Object[][] verdictArgs) {
     public static final int CONTRAST = 0, BALANCE = 1, PALETTE = 2, SIMILARITY = 3, OVERALL = 4;
     public static final String[] NAMES = {"contrast", "balance", "palette", "similarity", "overall"};
 
     /** A group of similar face colours, with its share of the visible surface. */
     public record Cluster(int rgb, float[] lab, float share) {
+    }
+
+    /** Block types with at least one visible face. */
+    public Set<Block> used() {
+        return counts.keySet();
     }
 
     public int faces() {

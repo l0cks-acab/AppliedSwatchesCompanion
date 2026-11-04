@@ -11,10 +11,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Scores a region the way a painter would squint at it. Only faces you can see (exposed to air or see-through
@@ -99,7 +97,7 @@ public final class Analyzer {
                 verdicts[i] = "empty";
                 args[i] = new Object[0];
             }
-            return new Analysis(level.dimension(), min, max, facePos, faceDir, faceWeight, List.of(), List.of(), Set.of(), 0, 0, scores, verdicts, args);
+            return new Analysis(level.dimension(), min, max, facePos, faceDir, faceWeight, List.of(), List.of(), Map.of(), 0, 0, scores, verdicts, args);
         }
 
         // Contrast
@@ -136,36 +134,7 @@ public final class Analyzer {
         }
 
         // Palette
-        List<Map.Entry<Integer, Integer>> colours = new ArrayList<>(rgbCount.entrySet());
-        colours.sort(Map.Entry.<Integer, Integer>comparingByValue().reversed());
-        List<double[]> sums = new ArrayList<>(); // L, a, b, count
-        for (var e : colours) {
-            float[] lab = ColorMath.lab(e.getKey());
-            int count = e.getValue();
-            double[] best = null;
-            float bestD = CLUSTER_DE;
-            for (double[] c : sums) {
-                float[] centre = {(float) (c[0] / c[3]), (float) (c[1] / c[3]), (float) (c[2] / c[3])};
-                float d = ColorMath.distance(centre, lab);
-                if (d < bestD) {
-                    bestD = d;
-                    best = c;
-                }
-            }
-            if (best == null) sums.add(new double[]{lab[0] * count, lab[1] * count, lab[2] * count, count});
-            else {
-                best[0] += lab[0] * count;
-                best[1] += lab[1] * count;
-                best[2] += lab[2] * count;
-                best[3] += count;
-            }
-        }
-        List<Analysis.Cluster> clusters = new ArrayList<>();
-        for (double[] c : sums) {
-            float[] lab = {(float) (c[0] / c[3]), (float) (c[1] / c[3]), (float) (c[2] / c[3])};
-            clusters.add(new Analysis.Cluster(labToRgb(lab), lab, (float) (c[3] / n)));
-        }
-        clusters.sort(Comparator.comparingDouble(Analysis.Cluster::share).reversed());
+        List<Analysis.Cluster> clusters = cluster(rgbCount, n);
         float err = 0;
         int significant = 0;
         for (int i = 0; i < Math.max(IDEAL.length, clusters.size()); i++) {
@@ -207,8 +176,44 @@ public final class Analyzer {
         verdicts[Analysis.OVERALL] = o >= 80 ? "great" : o >= 60 ? "solid" : o >= 40 ? "rough" : "messy";
         args[Analysis.OVERALL] = new Object[0];
 
-        Set<Block> used = new HashSet<>(byBlock.keySet());
-        return new Analysis(level.dimension(), min, max, facePos, faceDir, faceWeight, orphans, clusters, used, meanL, spread, scores, verdicts, args);
+        Map<Block, Integer> counts = new HashMap<>();
+        byBlock.forEach((k, v) -> counts.put(k, v.size()));
+        return new Analysis(level.dimension(), min, max, facePos, faceDir, faceWeight, orphans, clusters, counts, meanL, spread, scores, verdicts, args);
+    }
+
+    /** Groups colours (rgb to count) closer than {@link #CLUSTER_DE}, biggest share first. */
+    public static List<Analysis.Cluster> cluster(Map<Integer, Integer> rgbCount, int n) {
+        List<Map.Entry<Integer, Integer>> colours = new ArrayList<>(rgbCount.entrySet());
+        colours.sort(Map.Entry.<Integer, Integer>comparingByValue().reversed());
+        List<double[]> sums = new ArrayList<>(); // L, a, b, count
+        for (var e : colours) {
+            float[] lab = ColorMath.lab(e.getKey());
+            int count = e.getValue();
+            double[] best = null;
+            float bestD = CLUSTER_DE;
+            for (double[] c : sums) {
+                float[] centre = {(float) (c[0] / c[3]), (float) (c[1] / c[3]), (float) (c[2] / c[3])};
+                float d = ColorMath.distance(centre, lab);
+                if (d < bestD) {
+                    bestD = d;
+                    best = c;
+                }
+            }
+            if (best == null) sums.add(new double[]{lab[0] * count, lab[1] * count, lab[2] * count, count});
+            else {
+                best[0] += lab[0] * count;
+                best[1] += lab[1] * count;
+                best[2] += lab[2] * count;
+                best[3] += count;
+            }
+        }
+        List<Analysis.Cluster> clusters = new ArrayList<>();
+        for (double[] c : sums) {
+            float[] lab = {(float) (c[0] / c[3]), (float) (c[1] / c[3]), (float) (c[2] / c[3])};
+            clusters.add(new Analysis.Cluster(labToRgb(lab), lab, (float) (c[3] / n)));
+        }
+        clusters.sort(Comparator.comparingDouble(Analysis.Cluster::share).reversed());
+        return clusters;
     }
 
     /** CIELAB back to sRGB, clamped. */

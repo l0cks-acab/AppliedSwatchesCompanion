@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "equipment",
+  "ingredients": [
+    {
+      "item": "ae2:basic_card"
+    },
+    {
+      "item": "minecraft:compass"
+    }
+  ],
+  "result": {
+    "id": "appliedswatches_companion:surroundings_module",
+    "count": 1
+  }
+}
