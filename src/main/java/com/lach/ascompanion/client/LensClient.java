@@ -2,6 +2,7 @@ package com.lach.ascompanion.client;
 
 import com.lach.ascompanion.AppliedSwatchesCompanion;
 import com.lach.ascompanion.LensData;
+import com.lach.ascompanion.Module;
 import com.lach.ascompanion.SwatchLensItem;
 import com.lach.ascompanion.net.StockPayload;
 import com.lach.ascompanion.net.StockRequestPayload;
@@ -29,6 +30,8 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.joml.Matrix4f;
 
+import java.util.List;
+
 /** Scan flow, the region outline and the visual weight heatmap. */
 @EventBusSubscriber(modid = AppliedSwatchesCompanion.MODID, value = Dist.CLIENT)
 public final class LensClient {
@@ -40,6 +43,9 @@ public final class LensClient {
     private static boolean waiting;
     /** Lightest and heaviest face of the last scan, so the heatmap uses its full colour range. */
     private static float wMin, wMax = 1;
+    private static boolean focal;
+    private static List<Focal.Spot> spots;
+    private static Surroundings.Result surroundings;
 
     private LensClient() {
     }
@@ -59,6 +65,32 @@ public final class LensClient {
     public static void clear() {
         last = null;
         heatmap = false;
+        focal = false;
+        spots = null;
+        surroundings = null;
+    }
+
+    public static boolean has(Module m) {
+        ItemStack lens = heldLens();
+        return !lens.isEmpty() && SwatchLensItem.has(lens, m);
+    }
+
+    public static boolean focal() {
+        return focal;
+    }
+
+    /** Turns the focal point outlines on or off; returns how many spots there are. */
+    public static int setFocal(boolean on) {
+        focal = on;
+        if (on && spots == null && last != null) spots = Focal.find(Minecraft.getInstance().level, last, wMin, wMax);
+        return spots == null ? 0 : spots.size();
+    }
+
+    /** Terrain fit of the last scan, worked out the first time it's asked for. */
+    public static Surroundings.Result surroundings() {
+        if (surroundings == null && last != null && Minecraft.getInstance().level != null)
+            surroundings = Surroundings.compute(Minecraft.getInstance().level, last);
+        return surroundings;
     }
 
     /** Asks the server for the linked network's stock; the scan runs when the answer arrives. */
@@ -78,12 +110,15 @@ public final class LensClient {
         if (!d.hasRegion() || d.tooBig()) return;
         long t = System.nanoTime();
         last = Analyzer.scan(mc.level, d.a().get(), d.b().get());
+        spots = null;
+        surroundings = null;
         wMin = 1;
         wMax = 0;
         for (float w : last.faceWeight()) {
             wMin = Math.min(wMin, w);
             wMax = Math.max(wMax, w);
         }
+        if (focal) spots = Focal.find(mc.level, last, wMin, wMax);
         if (last.faces() == 0) {
             mc.player.sendOverlayMessage(Component.translatable("msg.appliedswatches_companion.empty").withStyle(ChatFormatting.RED));
             return;
@@ -111,8 +146,10 @@ public final class LensClient {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         ItemStack lens = heldLens();
-        boolean drawHeat = heatmap && last != null && last.dimension() == mc.level.dimension();
-        if (lens.isEmpty() && !drawHeat) return;
+        boolean here = last != null && last.dimension() == mc.level.dimension();
+        boolean drawHeat = heatmap && here;
+        boolean drawFocal = focal && here && spots != null;
+        if (lens.isEmpty() && !drawHeat && !drawFocal) return;
 
         Vec3 cam = event.getLevelRenderState().cameraRenderState.pos;
         PoseStack pose = event.getPoseStack();
@@ -128,10 +165,18 @@ public final class LensClient {
             for (int i = 0; i < n; i++) face(quads, m, last.pos(i), last.dir(i), heat((last.faceWeight()[i] - wMin) / Math.max(0.05f, wMax - wMin)));
             buffers.endBatch(RenderTypes.debugQuads());
         }
+        if (drawFocal) {
+            VertexConsumer quads = buffers.getBuffer(RenderTypes.debugQuads());
+            Matrix4f m = pose.last().pose();
+            for (Focal.Spot s : spots) face(quads, m, s.centre(), s.dir(), 0x5BE0C8);
+            buffers.endBatch(RenderTypes.debugQuads());
+        }
 
         VertexConsumer lines = buffers.getBuffer(RenderTypes.lines());
         if (drawHeat) for (BlockPos o : last.orphans())
             box(pose, lines, new AABB(o).inflate(0.02), 1f, 0.85f, 0.2f, 1f);
+        if (drawFocal) for (Focal.Spot s : spots)
+            box(pose, lines, s.area().inflate(0.02), 0.36f, 0.88f, 0.78f, 1f);
         if (!lens.isEmpty()) {
             LensData d = SwatchLensItem.data(lens);
             d.a().ifPresent(a -> box(pose, lines, new AABB(a).inflate(0.01), 0.3f, 0.9f, 1f, 1f));

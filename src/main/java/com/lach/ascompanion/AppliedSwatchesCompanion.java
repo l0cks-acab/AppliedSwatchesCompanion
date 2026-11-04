@@ -1,5 +1,7 @@
 package com.lach.ascompanion;
 
+import com.lach.ascompanion.net.ModulePayload;
+import com.lach.ascompanion.net.RecolourPayload;
 import com.lach.ascompanion.net.SendPayload;
 import com.lach.ascompanion.net.StockPayload;
 import com.lach.ascompanion.net.StockRequestPayload;
@@ -20,6 +22,10 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+
 @Mod(AppliedSwatchesCompanion.MODID)
 public class AppliedSwatchesCompanion {
     public static final String MODID = "appliedswatches_companion";
@@ -30,7 +36,15 @@ public class AppliedSwatchesCompanion {
 
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<LensData>> LENS_DATA = COMPONENTS.registerComponentType("lens",
             b -> b.persistent(LensData.CODEC).networkSynchronized(LensData.STREAM_CODEC));
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<List<Module>>> MODULES = COMPONENTS.registerComponentType("modules",
+            b -> b.persistent(Module.LIST_CODEC).networkSynchronized(Module.LIST_STREAM_CODEC));
     public static final DeferredItem<SwatchLensItem> LENS = ITEMS.registerItem("swatch_lens", SwatchLensItem::new, p -> p.stacksTo(1));
+    public static final Map<Module, DeferredItem<LensModuleItem>> MODULE_ITEMS = new EnumMap<>(Module.class);
+
+    static {
+        for (Module m : Module.values())
+            MODULE_ITEMS.put(m, ITEMS.registerItem(m.itemId(), p -> new LensModuleItem(m, p), p -> p.stacksTo(16)));
+    }
 
     public AppliedSwatchesCompanion(IEventBus modBus, ModContainer container) {
         ITEMS.register(modBus);
@@ -45,7 +59,10 @@ public class AppliedSwatchesCompanion {
     }
 
     private static void creativeTabs(BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) event.accept(LENS.get());
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(LENS.get());
+            for (Module m : Module.values()) event.accept(MODULE_ITEMS.get(m).get());
+        }
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
@@ -56,6 +73,12 @@ public class AppliedSwatchesCompanion {
         });
         r.playToServer(SendPayload.TYPE, SendPayload.STREAM_CODEC, (p, ctx) -> {
             if (ctx.player() instanceof ServerPlayer sp) LensServer.send(sp, p);
+        });
+        r.playToServer(ModulePayload.TYPE, ModulePayload.STREAM_CODEC, (p, ctx) -> {
+            if (ctx.player() instanceof ServerPlayer sp) LensServer.module(sp, p);
+        });
+        r.playToServer(RecolourPayload.TYPE, RecolourPayload.STREAM_CODEC, (p, ctx) -> {
+            if (ctx.player() instanceof ServerPlayer sp) Recolour.handle(sp, p);
         });
     }
 }

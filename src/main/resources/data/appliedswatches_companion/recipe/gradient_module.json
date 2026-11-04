@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "equipment",
+  "ingredients": [
+    "ae2:basic_card",
+    "minecraft:white_dye",
+    "minecraft:black_dye"
+  ],
+  "result": {
+    "id": "appliedswatches_companion:gradient_module",
+    "count": 1
+  }
+}

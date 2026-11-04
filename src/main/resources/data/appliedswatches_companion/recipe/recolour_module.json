@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "equipment",
+  "ingredients": [
+    "ae2:advanced_card",
+    "ae2:formation_core",
+    "ae2:annihilation_core"
+  ],
+  "result": {
+    "id": "appliedswatches_companion:recolour_module",
+    "count": 1
+  }
+}

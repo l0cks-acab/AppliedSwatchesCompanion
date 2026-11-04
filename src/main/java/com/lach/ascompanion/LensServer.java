@@ -8,6 +8,7 @@ import com.lach.appliedswatches.AppliedSwatches;
 import com.lach.appliedswatches.ApplicatorData;
 import com.lach.appliedswatches.ApplicatorItem;
 import com.lach.appliedswatches.SwatchTerminalBlockEntity;
+import com.lach.ascompanion.net.ModulePayload;
 import com.lach.ascompanion.net.SendPayload;
 import com.lach.ascompanion.net.StockPayload;
 import net.minecraft.ChatFormatting;
@@ -119,5 +120,29 @@ public final class LensServer {
         ApplicatorData old = ApplicatorItem.data(target);
         target.set(AppliedSwatches.APPLICATOR_DATA.get(), new ApplicatorData(blocks, 0, name, Optional.of(link), old.mode(), old.size()));
         player.sendSystemMessage(Component.translatable("msg.appliedswatches_companion.applicator_loaded", blocks.size(), name).withStyle(ChatFormatting.GREEN));
+    }
+
+    /** Moves a module between the player's inventory and the held lens. */
+    public static void module(ServerPlayer player, ModulePayload p) {
+        ItemStack lens = heldLens(player);
+        if (lens.isEmpty()) return;
+        List<Module> mods = new ArrayList<>(SwatchLensItem.modules(lens));
+        Item item = AppliedSwatchesCompanion.MODULE_ITEMS.get(p.module()).get();
+        if (p.install()) {
+            if (mods.contains(p.module())) return;
+            var inv = player.getInventory();
+            for (int i = 0; i < inv.getContainerSize(); i++) {
+                ItemStack s = inv.getItem(i);
+                if (!s.is(item)) continue;
+                s.shrink(1);
+                mods.add(p.module());
+                SwatchLensItem.setModules(lens, mods);
+                return;
+            }
+            player.sendOverlayMessage(Component.translatable("msg.appliedswatches_companion.module.missing", item.getName(item.getDefaultInstance())).withStyle(ChatFormatting.RED));
+        } else if (mods.remove(p.module())) {
+            SwatchLensItem.setModules(lens, mods);
+            player.getInventory().placeItemBackInInventory(new ItemStack(item));
+        }
     }
 }

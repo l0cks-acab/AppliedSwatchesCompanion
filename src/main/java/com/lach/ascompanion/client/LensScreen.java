@@ -1,17 +1,20 @@
 package com.lach.ascompanion.client;
 
-import net.minecraft.client.input.MouseButtonEvent;
 import com.lach.appliedswatches.client.FileDialogs;
 import com.lach.appliedswatches.client.Theme;
 import com.lach.appliedswatches.client.ThemeManager;
+import com.lach.ascompanion.AppliedSwatchesCompanion;
+import com.lach.ascompanion.Module;
+import com.lach.ascompanion.SwatchLensItem;
+import com.lach.ascompanion.net.ModulePayload;
 import com.lach.ascompanion.net.SendPayload;
 import com.lach.ascompanion.net.StockPayload;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -31,14 +34,14 @@ import java.util.List;
 import java.util.Set;
 
 /** Scan results: scores, the build's palette and accent picks from the linked network. */
-public class LensScreen extends Screen {
-    private static final int W = 300, H = 226;
-    private static final int PANEL = 0xFF3C424B, SLOT = 0xFF262A30, EDGE = 0xFF1B1E22, LIGHT = 0xFF5A626D, TEXT = 0xFFE6E6E6, DIM = 0xFF9AA2AD;
+public class LensScreen extends PanelScreen {
+    private static final int W = 300, BASE_H = 226, ROW = 22;
     private static final int GRID_X = 186, GRID_Y = 32, COLS = 6, ROWS = 5, CELL = 18;
     private static final int BAR_X = 72, BAR_W = 84;
-    private static final int PAL_Y = 152, PAL_H = 12;
+    private static final int PAL_H = 12;
     private static final int PER_ITEM = 64;
-    private static final String P = "gui.appliedswatches_companion.";
+    /** Module panel, to the right of the main panel like AE2's upgrade slots. */
+    private static final int MOD_W = 24;
 
     private final Analysis analysis;
     private final StockPayload stock;
@@ -46,11 +49,13 @@ public class LensScreen extends Screen {
     private static Accents.Mode mode = Accents.Mode.HARMONY;
     private List<Accents.Accent> accents;
     private final Set<Item> picked = new LinkedHashSet<>();
-    private int left, top;
+    private List<Module> modules = List.of();
+    private boolean sur, actionRow;
+    private int palY, rowH;
     private Button terminalBtn, applicatorBtn;
 
     public LensScreen(Analysis analysis, StockPayload stock) {
-        super(Component.translatable(P + "title"));
+        super(Component.translatable(P + "title"), W, BASE_H);
         this.analysis = analysis;
         this.stock = stock;
         refreshAccents();
@@ -65,11 +70,33 @@ public class LensScreen extends Screen {
         return Component.translatable(P + "mode." + mode.name().toLowerCase());
     }
 
+    private List<Module> heldModules() {
+        ItemStack lens = LensClient.heldLens();
+        return lens.isEmpty() ? List.of() : SwatchLensItem.modules(lens);
+    }
+
+    @Override
+    public void tick() {
+        if (!heldModules().equals(modules)) rebuildWidgets();
+    }
+
     @Override
     protected void init() {
-        left = (width - W) / 2;
-        top = (height - H) / 2;
-        int y = top + H - 26, bw = 68, gap = 4, x = left + 8;
+        modules = heldModules();
+        sur = modules.contains(Module.SURROUNDINGS);
+        List<Module> actions = modules.stream().filter(m -> m != Module.SURROUNDINGS).toList();
+        actionRow = !actions.isEmpty();
+        rowH = sur ? 20 : ROW;
+        palY = sur ? 158 : 152;
+        super.init();
+        left = (width - W - MOD_W - 3) / 2;
+        int y = top + h - 26, bw = 68, gap = 4, x = left + 8;
+        for (int i = 0; i < actions.size(); i++) {
+            Module m = actions.get(i);
+            Component label = Component.translatable(P + "module." + m.getSerializedName() + (m == Module.FOCAL && LensClient.focal() ? ".off" : ""));
+            addRenderableWidget(Button.builder(label, b -> moduleAction(m)).bounds(x + i * (92 + gap), y - 20, 92, 16)
+                    .tooltip(Tooltip.create(Component.translatable("tooltip.appliedswatches_companion.module." + m.getSerializedName()))).build());
+        }
         addRenderableWidget(Button.builder(heatLabel(), b -> {
             LensClient.setHeatmap(!LensClient.heatmap());
             b.setMessage(heatLabel());
@@ -90,6 +117,21 @@ public class LensScreen extends Screen {
         updateButtons();
     }
 
+    private void moduleAction(Module m) {
+        switch (m) {
+            case RECOLOUR -> minecraft.setScreen(new RecolourScreen(this, analysis, stock));
+            case GRADIENT -> minecraft.setScreen(new GradientScreen(this, analysis, stock));
+            case FOCAL -> {
+                int n = LensClient.setFocal(!LensClient.focal());
+                if (LensClient.focal() && minecraft.player != null)
+                    minecraft.player.sendOverlayMessage(Component.translatable("msg.appliedswatches_companion.focal", n).withStyle(ChatFormatting.AQUA));
+                onClose();
+            }
+            default -> {
+            }
+        }
+    }
+
     private void updateButtons() {
         terminalBtn.active = stock.online() && !accents.isEmpty();
         applicatorBtn.active = stock.linked() && !accents.isEmpty();
@@ -100,17 +142,60 @@ public class LensScreen extends Screen {
     }
 
     @Override
-    public boolean isPauseScreen() {
-        return false;
-    }
-
-    @Override
     public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partial) {
         super.extractBackground(g, mouseX, mouseY, partial);
-        g.fill(left - 1, top - 1, left + W + 1, top + H + 1, EDGE);
-        g.fill(left, top, left + W, top + H, PANEL);
-        g.fill(left, top, left + W, top + 1, LIGHT);
-        g.fill(left, top, left + 1, top + H, LIGHT);
+        panel(g, modX(), top + 4, MOD_W, Module.values().length * 18 + 6);
+    }
+
+    private int modX() {
+        return left + W + 3;
+    }
+
+    /** Module slot under the mouse, or null. */
+    private Module moduleAt(double mx, double my) {
+        int x = modX() + 3;
+        if (mx < x || mx >= x + 18) return null;
+        int i = (int) Math.floor((my - top - 7) / 18);
+        return i >= 0 && i < Module.values().length ? Module.values()[i] : null;
+    }
+
+    private void renderModules(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+        int x = modX() + 3;
+        for (Module m : Module.values()) {
+            int y = top + 7 + m.ordinal() * 18;
+            g.fill(x, y, x + 17, y + 17, SLOT);
+            g.item(new ItemStack(AppliedSwatchesCompanion.MODULE_ITEMS.get(m).get()), x + 1, y + 1);
+            if (!modules.contains(m)) fillTop(g, x + 1, y + 1, x + 16, y + 16, 0xC0262A30);
+            if (mouseX >= x && mouseX < x + 17 && mouseY >= y && mouseY < y + 17) fillTop(g, x + 1, y + 1, x + 16, y + 16, 0x40FFFFFF);
+        }
+    }
+
+    /** Rows of scores: the four, surroundings when installed, then overall. */
+    private record Row(String name, int score, Component verdict) {
+    }
+
+    private List<Row> rows() {
+        List<Row> out = new ArrayList<>();
+        int sum = 0;
+        for (int i = 0; i < Analysis.OVERALL; i++) {
+            int s = analysis.scores()[i];
+            sum += s;
+            out.add(new Row(Analysis.NAMES[i], s, Component.translatable(P + "verdict." + Analysis.NAMES[i] + "." + analysis.verdicts()[i], analysis.verdictArgs()[i])));
+        }
+        int n = Analysis.OVERALL;
+        if (sur) {
+            Surroundings.Result r = LensClient.surroundings();
+            if (r != null && r.score() >= 0) {
+                sum += r.score();
+                n++;
+            }
+            out.add(new Row("surroundings", r == null ? 0 : Math.max(0, r.score()), Component.translatable(P + "verdict.surroundings." + (r == null ? "none" : r.verdict()))));
+        }
+        int o = Math.round(sum / (float) n);
+        String v = o >= 80 ? "great" : o >= 60 ? "solid" : o >= 40 ? "rough" : "messy";
+        if (analysis.faces() == 0) v = "empty";
+        out.add(new Row("overall", o, Component.translatable(P + "verdict.overall." + v)));
+        return out;
     }
 
     @Override
@@ -122,16 +207,29 @@ public class LensScreen extends Screen {
         g.text(font, dims, left + W - 8 - font.width(dims), top + 7, DIM, false);
 
         // Scores
-        for (int i = 0; i < 5; i++) {
-            int y = top + 24 + i * 22;
-            int s = analysis.scores()[i];
-            boolean overall = i == Analysis.OVERALL;
-            g.text(font, Component.translatable(P + "score." + Analysis.NAMES[i]), left + 8, y, overall ? 0xFFFFFFFF : TEXT, overall);
+        List<Row> rows = rows();
+        boolean hoverTerrain = false;
+        for (int i = 0; i < rows.size(); i++) {
+            int y = top + 24 + i * rowH;
+            Row row = rows.get(i);
+            int s = row.score();
+            boolean overall = i == rows.size() - 1;
+            g.text(font, Component.translatable(P + "score." + row.name()), left + 8, y, overall ? 0xFFFFFFFF : TEXT, overall);
             g.fill(left + BAR_X, y + 1, left + BAR_X + BAR_W, y + 7, SLOT);
             g.fill(left + BAR_X, y + 1, left + BAR_X + BAR_W * s / 100, y + 7, 0xFF000000 | scoreColour(s));
             g.text(font, String.valueOf(s), left + BAR_X + BAR_W + 4, y, TEXT, false);
-            Component v = Component.translatable(P + "verdict." + Analysis.NAMES[i] + "." + analysis.verdicts()[i], analysis.verdictArgs()[i]);
-            g.text(font, v, left + 8, y + 10, DIM, false);
+            g.text(font, row.verdict(), left + 8, y + 10, DIM, false);
+            if (row.name().equals("surroundings")) {
+                Surroundings.Result r = LensClient.surroundings();
+                if (r != null) {
+                    int sx = left + 8 + font.width(row.verdict()) + 4;
+                    for (Analysis.Cluster c : r.terrain()) {
+                        g.fill(sx, y + 10, sx + 7, y + 17, 0xFF000000 | c.rgb());
+                        sx += 8;
+                    }
+                }
+                hoverTerrain = mouseX >= left + 8 && mouseX < left + GRID_X - 4 && mouseY >= y && mouseY < y + rowH;
+            }
         }
 
         // Accents
@@ -148,7 +246,7 @@ public class LensScreen extends Screen {
                     g.fill(x + 1, y + 1, x + 16, y + 16, SLOT);
                 }
                 g.item(new ItemStack(a.item()), x + 1, y + 1);
-                if (a.amount() >= 0) g.itemDecorations(font, new ItemStack(a.item()), x + 1, y + 1, shortCount(a.amount()));
+                if (a.amount() >= 0) count(g, font, x + 1, y + 1, shortCount(a.amount()));
                 if (mouseX >= x && mouseX < x + 17 && mouseY >= y && mouseY < y + 17) {
                     hover = a;
                     g.fill(x + 1, y + 1, x + 16, y + 16, 0x60FFFFFF);
@@ -158,30 +256,45 @@ public class LensScreen extends Screen {
                 : Component.translatable(P + "from_me", stock.items().size());
         if (accents.isEmpty()) g.text(font, Component.translatable(P + "no_accents"), left + GRID_X, top + GRID_Y + 4, DIM, false);
         drawWrapped(g, src, left + GRID_X, top + GRID_Y + ROWS * CELL + 3, COLS * CELL, DIM);
+        renderModules(g, mouseX, mouseY);
+        Module hoverModule = moduleAt(mouseX, mouseY);
 
         // Palette
-        g.text(font, Component.translatable(P + "palette"), left + 8, PAL_Y + top - 11, TEXT, false);
+        g.text(font, Component.translatable(P + "palette"), left + 8, top + palY - 11, TEXT, false);
         int px = left + 8, pw = W - 16, cur = px;
-        g.fill(px - 1, top + PAL_Y - 1, px + pw + 1, top + PAL_Y + PAL_H + 1, EDGE);
+        g.fill(px - 1, top + palY - 1, px + pw + 1, top + palY + PAL_H + 1, EDGE);
         Analysis.Cluster hoverCluster = null;
         List<Analysis.Cluster> cl = analysis.clusters();
         for (int i = 0; i < cl.size(); i++) {
             int end = i == cl.size() - 1 ? px + pw : Math.min(px + pw, cur + Math.max(1, Math.round(cl.get(i).share() * pw)));
             if (end <= cur) continue;
-            g.fill(cur, top + PAL_Y, end, top + PAL_Y + PAL_H, 0xFF000000 | cl.get(i).rgb());
-            if (mouseX >= cur && mouseX < end && mouseY >= top + PAL_Y && mouseY < top + PAL_Y + PAL_H) hoverCluster = cl.get(i);
+            g.fill(cur, top + palY, end, top + palY + PAL_H, 0xFF000000 | cl.get(i).rgb());
+            if (mouseX >= cur && mouseX < end && mouseY >= top + palY && mouseY < top + palY + PAL_H) hoverCluster = cl.get(i);
             cur = end;
             if (cur >= px + pw) break;
         }
         // 60-30-10 guide ticks
         for (float f : new float[]{0.6f, 0.9f}) {
             int x = px + Math.round(f * pw);
-            g.fill(x, top + PAL_Y + PAL_H + 1, x + 1, top + PAL_Y + PAL_H + 4, DIM);
+            g.fill(x, top + palY + PAL_H + 1, x + 1, top + palY + PAL_H + 4, DIM);
         }
-        Component hint = Component.translatable(P + "hint", picked.size());
-        g.text(font, hint, left + 8, top + PAL_Y + PAL_H + 8, DIM, false);
+        if (!actionRow) g.text(font, Component.translatable(P + "hint", picked.size()), left + 8, top + palY + PAL_H + 8, DIM, false);
 
-        if (hover != null) {
+        if (hoverModule != null) {
+            List<Component> tip = new ArrayList<>();
+            tip.add(Component.translatable("item.appliedswatches_companion." + hoverModule.itemId()).withStyle(st -> st.withColor(hoverModule.colour)));
+            tip.add(Component.translatable("tooltip.appliedswatches_companion.module." + hoverModule.getSerializedName()).withStyle(ChatFormatting.GRAY));
+            tip.add(Component.translatable(P + (modules.contains(hoverModule) ? "module.remove" : "module.install")).withStyle(ChatFormatting.DARK_GRAY));
+            g.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
+        } else if (hoverTerrain) {
+            List<Component> tip = new ArrayList<>();
+            tip.add(Component.translatable(P + "terrain", Surroundings.RING));
+            Surroundings.Result r = LensClient.surroundings();
+            if (r != null) for (Analysis.Cluster c : r.terrain())
+                tip.add(Component.literal("\u25A0 ").withStyle(st -> st.withColor(c.rgb()))
+                        .append(Component.literal(Theme.formatColor(c.rgb()) + "  " + Math.round(c.share() * 100) + "%").withStyle(ChatFormatting.GRAY)));
+            g.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
+        } else if (hover != null) {
             List<Component> tip = new ArrayList<>();
             tip.add(hover.item().getName(hover.item().getDefaultInstance()));
             if (hover.amount() >= 0) tip.add(Component.translatable(P + "stored", hover.amount()).withStyle(ChatFormatting.GRAY));
@@ -191,24 +304,12 @@ public class LensScreen extends Screen {
             tip.add(Component.translatable(P + "kind." + kind.name().toLowerCase(), Theme.formatColor(hover.target().sourceRgb()))
                     .withStyle(st -> st.withColor(kindColour)));
             tip.add(Component.translatable(P + "distance", Math.round(hover.dist())).withStyle(ChatFormatting.DARK_GRAY));
+            if (actionRow) tip.add(Component.translatable(P + "hint", picked.size()).withStyle(ChatFormatting.DARK_GRAY));
             g.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
         } else if (hoverCluster != null) {
             g.setComponentTooltipForNextFrame(font, List.of(Component.literal(Theme.formatColor(hoverCluster.rgb())),
                     Component.translatable(P + "share", Math.round(hoverCluster.share() * 100)).withStyle(ChatFormatting.GRAY)), mouseX, mouseY);
         }
-    }
-
-    private void drawWrapped(GuiGraphicsExtractor g, Component text, int x, int y, int w, int colour) {
-        for (var line : font.split(text, w)) {
-            g.text(font, line, x, y, colour, false);
-            y += 9;
-        }
-    }
-
-    private static String shortCount(long n) {
-        if (n < 1000) return String.valueOf(n);
-        if (n < 1_000_000) return (n / 1000) + "k";
-        return (n / 1_000_000) + "m";
     }
 
     private static int scoreColour(int s) {
@@ -218,6 +319,19 @@ public class LensScreen extends Screen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         double mx = event.x(), my = event.y();
+        int button = event.button();
+        Module m = moduleAt(mx, my);
+        if (m != null) {
+            boolean installed = modules.contains(m);
+            if (!installed && minecraft.player != null && !minecraft.player.getInventory().hasAnyMatching(s -> s.is(AppliedSwatchesCompanion.MODULE_ITEMS.get(m).get()))) {
+                minecraft.player.sendOverlayMessage(Component.translatable("msg.appliedswatches_companion.module.missing",
+                        Component.translatable("item.appliedswatches_companion." + m.itemId())).withStyle(ChatFormatting.RED));
+                return true;
+            }
+            ClientPacketDistributor.sendToServer(new ModulePayload(m, !installed));
+            minecraft.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1f));
+            return true;
+        }
         int c = (int) Math.floor((mx - left - GRID_X) / CELL), r = (int) Math.floor((my - top - GRID_Y) / CELL);
         if (c >= 0 && c < COLS && r >= 0 && r < ROWS) {
             int idx = r * COLS + c;

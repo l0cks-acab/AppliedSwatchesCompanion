@@ -28,7 +28,7 @@ The results screen gives five scores from 0 to 100, each with a short verdict:
 - **Balance**: whether the visual weight sits centred and slightly low.
 - **Palette**: how close the colour split is to the 60-30-10 rule.
 - **Similarity**: how many one-off blocks break the pattern.
-- **Overall**: the average of the four.
+- **Overall**: the average of the four, or of all five with the Surroundings Module.
 
 The palette bar below the scores shows each colour group's share of the surface, with ticks at 60% and 90%. Hover a segment to see its hex code and share.
 
@@ -59,11 +59,48 @@ Here are four builds: top-heavy black, white and red; a flat stone box; busy str
 
 ![Harmony accents on four builds](docs/harmony-examples.png)
 
+## Modules
+
+Modules are cards that add features to the lens, like the upgrade cards in an AE2 terminal. The Lens screen has a module panel on its right with a slot for each one. Click an empty slot to install that module from your inventory, and click an installed one to take it out. You can also right-click a module onto the lens in any inventory.
+
+![Lens screen with every module installed](docs/modules.png)
+
+| Module | Recipe (shapeless) | What it adds |
+| --- | --- | --- |
+| Recolour | Advanced card, formation core, annihilation core | Swaps one block across the build, paid for from ME |
+| Gradient | Basic card, white dye, black dye | Builds a block gradient between two colours from ME |
+| Focal Point | Basic card, glow ink sac | Outlines plain areas that could use an accent |
+| Surroundings | Basic card, compass | Scores how the build's colours fit the terrain around it |
+
+### Recolour
+
+Pick a block from the build at the top, then its replacement from the network below (searchable, sorted round the colour wheel), and press **Recolour**. Every block of that type in the region is swapped, along with its stairs, slabs and walls when both blocks have them. Facing, halves and other block properties carry over. The new blocks come out of the ME network and the old ones go back in, so the network needs enough of the new block. If it's short on a matching stair, slab or wall, those are left as they were.
+
+**Undo last** puts your last recolour back, again through the network. The lens needs to be linked to an online network.
+
+![Recolour](docs/recolour.png)
+
+### Gradient
+
+Left-click a block to start the gradient and right-click one to end it, then set 3 to 9 steps. The steps in between are the closest blocks to evenly spaced CIELAB colours between the two ends, each block used once. It starts from the build's darkest and lightest main colours. Send the ramp to the terminal or load it into a Swatch Applicator in order.
+
+![Gradient](docs/gradient.png)
+
+### Focal points
+
+**Focal points** outlines flat areas of one block, at least 3 x 3 faces, whose visual weight is in the light half of the scan's range. These are the stretches an eye slides over. The filled face in the middle of each one is where an accent would draw the eye. Up to 12 are shown, biggest first.
+
+![Focal points on a plain stone box](docs/focal.png)
+
+### Surroundings
+
+Adds a **Terrain** score. The lens samples the top block of every column in a 16-block ring around the region, groups those colours, and checks each of the build's main colours against the closest terrain colour by hue and chroma. Lightness is ignored, since a pale house on dark grass is fine. Greys, black and white fit anywhere. Hover the score to see the terrain's colours.
+
 ## Details
 
-Recipe (shaped): fluix crystal on top, glass on each side of a spyglass, amethyst shard below.
+Lens recipe (shaped): fluix crystal on top, glass on each side of a spyglass, amethyst shard below.
 
-Requires Minecraft 1.21.1, NeoForge 21.1+, AE2 19.0.27 or newer and AppliedSwatches 0.2.0 or newer. Install on both client and server.
+Requires Minecraft 1.21.1, NeoForge 21.1+, AE2 19.0.27 or newer and AppliedSwatches 0.2.3 or newer. Install on both client and server.
 
 Scanning runs on the client, so resource packs change the colours, just like in AppliedSwatches. The server only lists the network's stock and handles exports.
 
@@ -117,7 +154,14 @@ score = 100 × (1 − 20 × orphans / blocks)
 
 ![Similarity](docs/faq/q6-similarity.png)
 
-**7. How are Harmony accents picked?**
+**7. How is the Terrain score worked out?**
+Terrain colours come from the top face of every loaded column within 16 blocks of the region, grouped the same way as the build's palette (groups under 5% are dropped). For each of the build's main colours with chroma 12 or more, the Lens finds the nearest terrain colour using CIE94 with the lightness term removed:
+
+d = √( (ΔC / (1 + 0.045 C))² + (ΔH / (1 + 0.015 C))² )
+
+A colour's fit is e^−(d / 25)², and the score is the share-weighted average of those fits, with neutral colours counting as a perfect fit. A red brick house in a spruce forest sits near the brown of the logs and scores well. A blue house in a desert has nothing near it and scores low.
+
+**8. How are Harmony accents picked?**
 A good accent usually comes from colours the build already has. For each palette colour (with some chroma), the Lens makes three targets at the same hue: a **shade** (18 L darker), a **tint** (16 L lighter) and a **muted** tone (half the chroma). Neutral **bridging greys** fill lightness gaps of 22 or more between palette colours. So a black, white and red build gets maroons and red-browns from the red, and charcoal and stone greys between black and white.
 
 Blocks are matched to targets with **CIE94**, a newer ΔE formula than AppliedSwatches' ΔE76. It weighs differences in hue more than differences in lightness, so a wrong colour costs more than a slightly wrong brightness:

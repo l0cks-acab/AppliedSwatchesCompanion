@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "appliedswatches_companion:item/surroundings_module"
+  }
+}
