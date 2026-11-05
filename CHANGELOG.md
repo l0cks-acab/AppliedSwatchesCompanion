@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Fixed a crash when scanning with Sodium (or other mods that free block textures). Colours are now read from the texture files instead.
+
 ## 0.2.0
 
 - Lens modules: cards that install into the lens from a module panel on the Lens screen, or by right-clicking them onto the lens.

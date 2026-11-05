@@ -1,5 +1,6 @@
 package com.lach.ascompanion.client;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import com.lach.appliedswatches.client.ColorMath;
 import net.minecraft.client.Minecraft;
 import com.lach.appliedswatches.client.ModelQuads;
@@ -15,6 +16,7 @@ import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -109,28 +111,46 @@ public final class FaceColors {
     private static Sprite sprite(TextureAtlasSprite sprite) {
         return SPRITES.computeIfAbsent(sprite.contents().name(), k -> {
             SpriteContents c = sprite.contents();
-            var img = c.getOriginalImage();
-            int w = Math.min(c.width(), img.getWidth()), h = Math.min(c.height(), img.getHeight());
-            long r = 0, g = 0, b = 0;
-            double sumL = 0, sumL2 = 0;
-            int n = 0;
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++) {
-                    int p = img.getPixel(x, y);
-                    if ((p >>> 24) < 128) continue;
-                    int pr = (p >> 16) & 0xFF, pg = (p >> 8) & 0xFF, pb = p & 0xFF;
-                    r += pr;
-                    g += pg;
-                    b += pb;
-                    float l = ColorMath.lab(pr << 16 | pg << 8 | pb)[0];
-                    sumL += l;
-                    sumL2 += l * l;
-                    n++;
-                }
-            if (n == 0) return new Sprite(0, 0, 0, 0, 0);
-            double mean = sumL / n;
-            float spread = (float) Math.sqrt(Math.max(0, sumL2 / n - mean * mean));
-            return new Sprite((int) (r / n), (int) (g / n), (int) (b / n), n, spread);
+            try {
+                return read(c.getOriginalImage(), c.width(), c.height());
+            } catch (RuntimeException e) {
+                // Some mods (Sodium and friends) free sprite images after upload: read the texture file instead.
+                return fromResource(k);
+            }
         });
+    }
+
+    private static Sprite fromResource(Identifier name) {
+        Identifier file = name.withPath(path -> "textures/" + path + ".png");
+        try (InputStream in = Minecraft.getInstance().getResourceManager().open(file); NativeImage img = NativeImage.read(in)) {
+            // Animated textures are a vertical strip of frames: use the first.
+            return read(img, img.getWidth(), Math.min(img.getWidth(), img.getHeight()));
+        } catch (Exception e) {
+            return new Sprite(0, 0, 0, 0, 0);
+        }
+    }
+
+    private static Sprite read(NativeImage img, int width, int height) {
+        int w = Math.min(width, img.getWidth()), h = Math.min(height, img.getHeight());
+        long r = 0, g = 0, b = 0;
+        double sumL = 0, sumL2 = 0;
+        int n = 0;
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++) {
+                int p = img.getPixel(x, y);
+                if ((p >>> 24) < 128) continue;
+                int pr = (p >> 16) & 0xFF, pg = (p >> 8) & 0xFF, pb = p & 0xFF;
+                r += pr;
+                g += pg;
+                b += pb;
+                float l = ColorMath.lab(pr << 16 | pg << 8 | pb)[0];
+                sumL += l;
+                sumL2 += l * l;
+                n++;
+            }
+        if (n == 0) return new Sprite(0, 0, 0, 0, 0);
+        double mean = sumL / n;
+        float spread = (float) Math.sqrt(Math.max(0, sumL2 / n - mean * mean));
+        return new Sprite((int) (r / n), (int) (g / n), (int) (b / n), n, spread);
     }
 }
