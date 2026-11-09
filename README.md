@@ -2,7 +2,7 @@
 
 ![AppliedSwatches Companion](docs/banner.png)
 
-An addon for [AppliedSwatches](https://github.com/l0cks-acab/appliedswatches) (Applied Energistics 2) on NeoForge 1.21.1.
+An addon for [AppliedSwatches](https://github.com/l0cks-acab/appliedswatches) (Applied Energistics 2) on NeoForge. This branch: Minecraft 26.3.
 
 Point the **Swatch Lens** at a build and it shows how the build reads: its contrast, where its visual weight sits, how its palette is split and whether anything breaks the pattern. It then suggests accent blocks that fit, straight from your ME network.
 
@@ -100,7 +100,7 @@ Adds a **Terrain** score. The lens samples the top block of every column in a 16
 
 Lens recipe (shaped): fluix crystal on top, glass on each side of a spyglass, amethyst shard below.
 
-Requires Minecraft 1.21.1, NeoForge 21.1+, AE2 19.0.27 or newer and AppliedSwatches 0.2.3 or newer. Install on both client and server.
+Requires Minecraft 26.3, NeoForge 26.3, AE2 26.3.1-alpha or newer and AppliedSwatches 0.2.5+26.3 or newer. Install on both client and server.
 
 Scanning runs on the client, so resource packs change the colours, just like in AppliedSwatches. The server only lists the network's stock and handles exports.
 

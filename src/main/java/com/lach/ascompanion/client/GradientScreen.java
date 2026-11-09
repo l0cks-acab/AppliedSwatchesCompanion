@@ -107,7 +107,7 @@ public class GradientScreen extends PanelScreen {
                 .tooltip(Tooltip.create(Component.translatable(P + "to_terminal.tip", PER_ITEM))).build());
         applicatorBtn = addRenderableWidget(Button.builder(Component.translatable(P + "to_applicator"), b -> send(true)).bounds(left + 8 + bw + 5, y, bw, 18)
                 .tooltip(Tooltip.create(Component.translatable(P + "gradient.applicator.tip"))).build());
-        addRenderableWidget(Button.builder(Component.translatable(P + "back"), b -> minecraft.setScreen(parent)).bounds(left + 8 + 2 * (bw + 5), y, bw, 18).build());
+        addRenderableWidget(Button.builder(Component.translatable(P + "back"), b -> minecraft.gui.setScreen(parent)).bounds(left + 8 + 2 * (bw + 5), y, bw, 18).build());
         update();
     }
 
@@ -184,6 +184,6 @@ public class GradientScreen extends PanelScreen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(null);
+        minecraft.gui.setScreen(null);
     }
 }

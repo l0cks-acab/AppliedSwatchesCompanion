@@ -1,5 +1,6 @@
 package com.lach.ascompanion;
 
+import net.minecraft.util.Prediction;
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.security.IActionSource;
@@ -170,7 +171,7 @@ public final class Recolour {
             long left = e.getValue() - StorageHelper.poweredInsert(energy, storage, AEItemKey.of(e.getKey()), e.getValue(), src);
             while (left > 0) {
                 int n = (int) Math.min(left, e.getKey().getDefaultMaxStackSize());
-                player.getInventory().placeItemBackInInventory(new ItemStack(e.getKey(), n));
+                player.getInventory().placeItemBackInInventory(new ItemStack(e.getKey(), n), Prediction.SERVER_ONLY);
                 left -= n;
             }
         }

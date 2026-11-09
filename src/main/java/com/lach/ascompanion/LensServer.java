@@ -1,5 +1,6 @@
 package com.lach.ascompanion;
 
+import net.minecraft.util.Prediction;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
@@ -142,7 +143,7 @@ public final class LensServer {
             player.sendOverlayMessage(Component.translatable("msg.appliedswatches_companion.module.missing", item.getName(item.getDefaultInstance())).withStyle(ChatFormatting.RED));
         } else if (mods.remove(p.module())) {
             SwatchLensItem.setModules(lens, mods);
-            player.getInventory().placeItemBackInInventory(new ItemStack(item));
+            player.getInventory().placeItemBackInInventory(new ItemStack(item), Prediction.SERVER_ONLY);
         }
     }
 }

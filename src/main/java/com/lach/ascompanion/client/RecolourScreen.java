@@ -73,7 +73,7 @@ public class RecolourScreen extends PanelScreen {
             LensClient.clear();
             onClose();
         }).bounds(left + 8 + bw + 5, y, bw, 18).tooltip(Tooltip.create(Component.translatable(P + "recolour.undo.tip"))).build()).active = stock.online();
-        addRenderableWidget(Button.builder(Component.translatable(P + "back"), b -> minecraft.setScreen(parent)).bounds(left + 8 + 2 * (bw + 5), y, bw, 18).build());
+        addRenderableWidget(Button.builder(Component.translatable(P + "back"), b -> minecraft.gui.setScreen(parent)).bounds(left + 8 + 2 * (bw + 5), y, bw, 18).build());
         update();
     }
 
@@ -157,6 +157,6 @@ public class RecolourScreen extends PanelScreen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(null);
+        minecraft.gui.setScreen(null);
     }
 }
