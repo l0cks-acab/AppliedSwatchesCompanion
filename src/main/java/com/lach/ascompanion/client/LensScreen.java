@@ -119,8 +119,8 @@ public class LensScreen extends PanelScreen {
 
     private void moduleAction(Module m) {
         switch (m) {
-            case RECOLOUR -> minecraft.setScreen(new RecolourScreen(this, analysis, stock));
-            case GRADIENT -> minecraft.setScreen(new GradientScreen(this, analysis, stock));
+            case RECOLOUR -> minecraft.gui.setScreen(new RecolourScreen(this, analysis, stock));
+            case GRADIENT -> minecraft.gui.setScreen(new GradientScreen(this, analysis, stock));
             case FOCAL -> {
                 int n = LensClient.setFocal(!LensClient.focal());
                 if (LensClient.focal() && minecraft.player != null)
@@ -363,7 +363,7 @@ public class LensScreen extends PanelScreen {
 
     /** Asks for a name, then saves the build's main colours plus the accents as an AppliedSwatches theme. */
     private void saveTheme() {
-        minecraft.setScreen(new NamePrompt(this, Component.translatable(P + "theme_name"), scanName(), this::saveTheme));
+        minecraft.gui.setScreen(new NamePrompt(this, Component.translatable(P + "theme_name"), scanName(), this::saveTheme));
     }
 
     private void saveTheme(String name) {
