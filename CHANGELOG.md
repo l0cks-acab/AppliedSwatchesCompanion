@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Recolour skips regions that aren't loaded instead of loading their chunks.
+- Recolour no longer errors on block families whose stairs, slabs or walls have no item.
+- Built against AppliedSwatches 0.2.6.
+
 ## 0.2.1
 
 - Fixed a crash when scanning with Sodium (or other mods that free block textures). Colours are now read from the texture files instead.
