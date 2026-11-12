@@ -78,7 +78,7 @@ public final class Recolour {
             }
             return;
         }
-        if (!d.hasRegion() || d.tooBig()) {
+        if (!d.hasRegion() || d.tooBig() || !level.hasChunksAt(d.a().get(), d.b().get())) {
             fail(player, "msg.appliedswatches_companion.no_region");
             return;
         }
@@ -89,7 +89,7 @@ public final class Recolour {
         map.put(from, to);
         for (Variants.Shape s : Variants.Shape.values()) {
             Block fv = Variants.variant(from, s), tv = Variants.variant(to, s);
-            if (fv != null && tv != null) map.put(fv, tv);
+            if (fv != null && tv != null && tv.asItem() != net.minecraft.world.item.Items.AIR) map.put(fv, tv);
         }
         List<Change> changes = new ArrayList<>();
         for (BlockPos pos : BlockPos.betweenClosed(d.a().get(), d.b().get())) {
